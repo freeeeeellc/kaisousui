@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>快走水 燃費データベース | 管理画面</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">💧</div>
+      <div>
+        <div class="brand-name">快走水</div>
+        <div class="brand-sub">FUEL DATABASE</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a href="#/dashboard"><span class="nav-ico">📊</span>ダッシュボード</a>
+      <a href="#/companies"><span class="nav-ico">🏢</span>導入先企業</a>
+      <a href="#/vehicles"><span class="nav-ico">🚚</span>車両</a>
+      <a href="#/records"><span class="nav-ico">⛽</span>燃費記録</a>
+      <div class="nav-sep">システム</div>
+      <a href="#/data"><span class="nav-ico">💾</span>データ管理</a>
+      <a href="../site/index.html"><span class="nav-ico">🌐</span>製品サイトを開く</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      バズウォール合同会社<br>
+      kaisousui@buzzwall.jp
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <h1 id="page-title">ダッシュボード</h1>
+      <span class="spacer"></span>
+      <div class="scope">
+        <span>表示範囲</span>
+        <select id="scope-select" aria-label="表示する導入先企業"></select>
+      </div>
+    </header>
+
+    <main class="content" id="view"></main>
+  </div>
+</div>
+
+<dialog class="modal" id="modal">
+  <form id="modal-form" method="dialog">
+    <div class="modal-head" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="modal-cancel">キャンセル</button>
+      <button type="submit" class="btn btn-primary">保存する</button>
+    </div>
+  </form>
+</dialog>
+
+<script>window.KAISOUSUI_DEMO = true;</script>
+<script src="store.js"></script>
+<script src="calc.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

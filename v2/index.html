@@ -302,6 +302,7 @@ h1 { font-size: 21px; margin: 0; font-weight: 800; letter-spacing: -.01em; }
 const grid = document.getElementById('grid');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let loop = false, timer = null;
+let gen = 0;   // 再生世代。前回のカウントアップが生き残って値を上書きするのを防ぐ
 
 /* 施工進捗グリッドのマス目を data 属性から生成 */
 (function buildCells() {
@@ -316,8 +317,10 @@ function countUp(el, ms) {
   const to = parseFloat(el.dataset.to);
   const unit = el.dataset.unit || '', prefix = el.dataset.prefix || '';
   const dec = (el.dataset.to.split('.')[1] || '').length;
+  const mine = gen;
   const t0 = performance.now();
   (function step(now) {
+    if (mine !== gen) return;   // 新しい再生が始まっていたら打ち切る
     const p = Math.min(1, (now - t0) / ms);
     const eased = 1 - Math.pow(1 - p, 3);
     el.textContent = prefix + (to * eased).toFixed(dec) + unit;
@@ -325,30 +328,46 @@ function countUp(el, ms) {
   })(t0);
 }
 
-function play() {
-  grid.classList.remove('run');
-  // 一度リセットしてからでないと再生し直せない（レイアウトを強制的に確定させる）
-  void grid.offsetWidth;
+const CIRC = 339.3;   // 2πr（r=54）
 
+function setZero() {
   document.getElementById('track-fill').style.width = '0';
   document.querySelectorAll('.bar-fill, .rank-fill').forEach(b => (b.style.width = '0'));
-  document.querySelectorAll('.arc').forEach(a => (a.style.strokeDashoffset = 339.3));
+  document.querySelectorAll('.arc').forEach(a => (a.style.strokeDashoffset = String(CIRC)));
+}
+
+function setFinal() {
+  const tf = document.getElementById('track-fill');
+  tf.style.width = tf.dataset.pct + '%';
+  document.querySelectorAll('.bar-fill, .rank-fill').forEach(b => (b.style.width = b.dataset.pct + '%'));
+  document.querySelectorAll('.arc').forEach(a => {
+    // 改善率30%を満スケールにしている（100%で一周する目盛りではない）
+    const pct = Math.min(1, parseFloat(a.dataset.pct) / 30);
+    a.style.strokeDashoffset = String(CIRC * (1 - pct));
+  });
+}
+
+function play() {
+  /* CSS transition で動かしている要素（バー・リング・ランキング）は、
+   * 「0に戻した状態」をブラウザに確定させてから最終値を渡さないと再生されない。
+   * リフロー（offsetWidth の読み取り）を2回挟むのが要点：
+   *   1回目 … 初期値0を確定させる（この時点では .run が無いので transition は効かない）
+   *   2回目 … .run を付けた状態＝transition有効を確定させる
+   * これを省くと、2回目以降の再生でブラウザが「値は変わっていない」と判断して動かない。
+   * keyframes で動く要素（マス目・フロー・スパークライン）はこの影響を受けないため、
+   * 症状がパネルごとにバラつく。 */
+  gen++;
+
+  grid.classList.remove('run');
+  setZero();
+  void grid.offsetWidth;
 
   grid.classList.add('run');
+  void grid.offsetWidth;
 
-  requestAnimationFrame(() => {
-    const tf = document.getElementById('track-fill');
-    tf.style.width = tf.dataset.pct + '%';
-    document.querySelectorAll('.bar-fill, .rank-fill').forEach(b => (b.style.width = b.dataset.pct + '%'));
-    document.querySelectorAll('.arc').forEach(a => {
-      // 円周 2πr = 339.3。改善率100%で一周する目盛りではなく、30%を満スケールにしている
-      const pct = Math.min(1, parseFloat(a.dataset.pct) / 30);
-      a.style.strokeDashoffset = 339.3 * (1 - pct);
-    });
-  });
+  setFinal();
 
-  // dataset は読み取り専用アクセサなので Object.assign では書き換えられない。
-  // 目標値は必ずHTML側の data-to に持たせる。
+  // 目標値はHTML側の data-to に持たせる（dataset は読み取り専用アクセサなので代入で作れない）
   document.querySelectorAll('[data-to]').forEach(el => countUp(el, 1600));
 }
 

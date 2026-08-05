@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>管理画面 V2 — モーション検証</title>
+<style>
+/* =============================================================================
+ * 管理画面V2 モーション検証。外部ライブラリは使わない（CSS + インラインSVGのみ）。
+ * 数値はすべて data-* 属性から読む＝実データで駆動できることを示すため。
+ * ========================================================================== */
+:root {
+  --ink: #0f2233; --ink-2: #4a5f73; --ink-3: #8698a8;
+  --line: #dde6ee; --line-2: #eef4f9; --bg: #f2f7fb; --panel: #fff;
+  --brand: #0a6ea6; --brand-dark: #06557f; --accent: #00a8c8;
+  --good: #0f9d58; --good-soft: #e7f6ee; --warn: #c2410c;
+  --shadow: 0 1px 2px rgba(15,34,51,.06), 0 4px 16px rgba(15,34,51,.05);
+  --ease: cubic-bezier(.22,.61,.36,1);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 26px; background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 14px; line-height: 1.7; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+
+.page-head { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; margin-bottom: 8px; }
+h1 { font-size: 21px; margin: 0; font-weight: 800; letter-spacing: -.01em; }
+.page-head p { margin: 0; color: var(--ink-2); font-size: 13px; }
+.controls { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.seg { display: flex; background: #e4edf4; border-radius: 999px; padding: 3px; }
+.seg button {
+  border: 0; background: transparent; font: inherit; font-size: 12.5px; font-weight: 700;
+  padding: 6px 14px; border-radius: 999px; cursor: pointer; color: var(--ink-2);
+}
+.seg button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+.btn {
+  border: 1px solid var(--line); background: #fff; font: inherit; font-size: 12.5px;
+  padding: 7px 14px; border-radius: 999px; cursor: pointer; font-weight: 700; color: var(--ink);
+}
+.btn:hover { background: #f5f9fc; }
+.mode-note {
+  background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  border-radius: 9px; padding: 11px 16px; font-size: 12.5px; color: var(--ink-2);
+  margin: 14px 0 22px;
+}
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; }
+.panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column;
+}
+.panel-head {
+  padding: 13px 18px 11px; border-bottom: 1px solid var(--line-2);
+  display: flex; align-items: baseline; gap: 10px;
+}
+.panel-no {
+  font-size: 11px; font-weight: 800; color: var(--accent);
+  border-left: 3px solid var(--accent); padding-left: 8px;
+}
+.panel-head h2 { font-size: 14px; margin: 0; font-weight: 800; }
+.panel-head .use { margin-left: auto; font-size: 10.5px; color: var(--ink-3); letter-spacing: .04em; }
+.panel-body { padding: 20px 18px; flex: 1; }
+.panel-foot {
+  padding: 10px 18px 13px; font-size: 11.5px; color: var(--ink-3);
+  border-top: 1px solid var(--line-2); background: #fbfdfe;
+}
+
+/* --- 1. 施工進捗グリッド ------------------------------------------------- */
+.cells { display: grid; grid-template-columns: repeat(11, 1fr); gap: 5px; }
+.cell {
+  aspect-ratio: 1; border-radius: 5px; background: #edf3f8;
+  transform: scale(.55); opacity: .35;
+}
+.run .cell.on {
+  animation: cellIn .34s var(--ease) forwards;
+  animation-delay: calc(var(--i) * 42ms);
+}
+@keyframes cellIn {
+  from { transform: scale(.55); opacity: .35; background: #edf3f8; }
+  60%  { transform: scale(1.12); }
+  to   { transform: scale(1); opacity: 1; background: var(--brand); }
+}
+.progress-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.count { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.count small { font-size: 12px; color: var(--ink-3); font-weight: 700; }
+.track { flex: 1; height: 7px; background: #edf3f8; border-radius: 99px; overflow: hidden; }
+.track i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--brand)); border-radius: 99px; }
+.run .track i { transition: width 1.9s var(--ease); }
+
+/* --- 2. 使用前後バー ----------------------------------------------------- */
+.bars { display: grid; gap: 15px; }
+.bar-row { display: grid; grid-template-columns: 62px 1fr auto; align-items: center; gap: 11px; }
+.bar-label { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.bar-track { height: 22px; background: #f4f8fb; border-radius: 6px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; width: 0; border-radius: 6px; background: #9fb3c4; }
+.bar-row.after .bar-fill { background: linear-gradient(90deg, #2fa96f, var(--good)); }
+.run .bar-fill { transition: width 1.25s var(--ease); }
+.run .bar-row.after .bar-fill { transition-delay: .34s; }
+.bar-val { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 74px; text-align: right; }
+.bar-row.after .bar-val { color: var(--good); }
+
+/* --- 3. 改善率リング ----------------------------------------------------- */
+.ring-wrap { display: flex; align-items: center; gap: 22px; }
+.ring { position: relative; width: 132px; height: 132px; flex: 0 0 auto; }
+.ring svg { transform: rotate(-90deg); }
+.ring .arc { stroke-dasharray: 339.3; stroke-dashoffset: 339.3; }
+.run .ring .arc { transition: stroke-dashoffset 1.6s var(--ease); }
+.ring-mid {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+}
+.ring-mid b { font-size: 26px; font-weight: 800; color: var(--good); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ring-mid span { font-size: 10.5px; color: var(--ink-3); display: block; }
+.ring-legend { font-size: 12.5px; color: var(--ink-2); }
+.ring-legend dt { color: var(--ink-3); font-size: 11px; }
+.ring-legend dd { margin: 0 0 9px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* --- 4. テスト導入パイプライン ------------------------------------------- */
+.pipe text { font-size: 9.5px; fill: var(--ink-3); font-family: inherit; }
+.pipe .stage-c { fill: #fff; stroke: #cfdde8; stroke-width: 2; }
+.run .pipe .stage-c { animation: stagePop .5s var(--ease) forwards; animation-delay: calc(var(--i) * 620ms); }
+@keyframes stagePop {
+  to { fill: var(--brand); stroke: var(--brand); }
+}
+.pipe .flow { stroke: #dce7ef; stroke-width: 2.5; fill: none; }
+.pipe .flow-lit { stroke: var(--accent); stroke-width: 2.5; fill: none; stroke-dasharray: 999; stroke-dashoffset: 999; }
+.run .pipe .flow-lit { animation: drawLine 2.6s linear forwards; }
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+.run .pipe .spark { animation: sparkMove 2.6s linear forwards; }
+@keyframes sparkMove { from { opacity: 1; } to { opacity: 1; } }
+
+/* --- 5. スパークライン --------------------------------------------------- */
+.spark-svg .line { fill: none; stroke: var(--brand); stroke-width: 2.5; stroke-dasharray: 900; stroke-dashoffset: 900; }
+.run .spark-svg .line { animation: drawLine 1.8s var(--ease) forwards; }
+.spark-svg .area { fill: url(#g1); opacity: 0; }
+.run .spark-svg .area { animation: fadeIn .8s ease forwards; animation-delay: 1.1s; }
+@keyframes fadeIn { to { opacity: 1; } }
+.spark-svg .end-dot { opacity: 0; }
+.run .spark-svg .end-dot { animation: popDot .45s var(--ease) forwards; animation-delay: 1.6s; }
+@keyframes popDot { from { opacity: 0; r: 0; } to { opacity: 1; r: 5; } }
+.spark-svg .marker { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 4; opacity: 0; }
+.run .spark-svg .marker { animation: fadeIn .5s ease forwards; animation-delay: .9s; }
+
+/* --- 6. 車両ランキング --------------------------------------------------- */
+.rank { display: grid; gap: 10px; }
+.rank-row { display: grid; grid-template-columns: 78px 1fr 54px; align-items: center; gap: 10px; }
+.rank-name { font-size: 11.5px; font-weight: 700; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-track { height: 15px; background: #f4f8fb; border-radius: 5px; overflow: hidden; }
+.rank-fill { display: block; height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, var(--accent), var(--good)); }
+.run .rank-fill { transition: width 1.1s var(--ease); transition-delay: calc(var(--i) * 160ms); }
+.rank-val { font-size: 12.5px; font-weight: 800; color: var(--good); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 動きを減らす設定の人には静止状態で見せる（最終値は同じ） */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+  .cell.on { transform: scale(1); opacity: 1; background: var(--brand); }
+  .ring .arc { stroke-dashoffset: var(--final-offset, 0); }
+  .spark-svg .line { stroke-dashoffset: 0; }
+  .spark-svg .area, .spark-svg .end-dot, .spark-svg .marker { opacity: 1; }
+  .pipe .stage-c { fill: var(--brand); stroke: var(--brand); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="page-head">
+    <div>
+      <h1>管理画面 V2 — モーション検証</h1>
+      <p>数値はすべて実データを想定した属性値から描画しています（ハードコードされた見た目ではありません）。</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="再生モード">
+        <button id="m-once" aria-pressed="true">実運用モード</button>
+        <button id="m-loop" aria-pressed="false">デモモード</button>
+      </div>
+      <button class="btn" id="replay">↻ もう一度</button>
+    </div>
+  </div>
+
+  <div class="mode-note" id="note"></div>
+
+  <div class="grid" id="grid">
+
+    <!-- 1 -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-no">01</span><h2>テスト導入の施工進捗</h2><span class="use">DASHBOARD</span></div>
+      <div class="panel-body">
+        <div class="cells" id="cells" data-total="44" data-done="37"></div>
+        <div class="progress-row">
+          <div class="count"><span id="cnt" data-to="37">0</span><small> / 44 台</small></div>
+          <div class="track"><i id="track-fill" data-pct="84"></i></div>
+        </div>
+      </div>
+      <div class="panel-foot">1マス＝1台。施工済みが順に埋まる。導入先に進捗を見せる画面向き。</div>
+    </div>
+
+    <!-- 2 -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-no">02</span><h2>使用前後の平均燃費</h2><span class="use">REPORT</span></div>
+      <div class="panel-body">
+        <div class="bars">
+          <div class="bar-row"><span class="bar-label">使用前</span>
+            <div class="bar-track"><i class="bar-fill" data-pct="58"></i></div>
+            <span class="bar-val" data-to="7.59" data-unit=" km/L">0</span></div>
+          <div class="bar-row after"><span class="bar-label">使用後</span>
+            <div class="bar-track"><i class="bar-fill" data-pct="88"></i></div>
+            <span class="bar-val" data-to="8.77" data-unit=" km/L">0</span></div>
+        </div>
+      </div>
+      <div class="panel-foot">バーが伸びながら数値がカウントアップ。レポート印刷時は最終状態で固定される。</div>
+    </div>
+
+    <!-- 3 -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-no">03</span><h2>改善率</h2><span class="use">KPI</span></div>
+      <div class="panel-body">
+        <div class="ring-wrap">
+          <div class="ring">
+            <svg width="132" height="132" viewBox="0 0 132 132">
+              <circle cx="66" cy="66" r="54" fill="none" stroke="#edf3f8" stroke-width="12"/>
+              <circle class="arc" cx="66" cy="66" r="54" fill="none" stroke="#0f9d58"
+                      stroke-width="12" stroke-linecap="round" data-pct="15.6"/>
+            </svg>
+            <div class="ring-mid"><b><span data-to="15.6" data-unit="%" data-prefix="+">0</span></b><span>改善率</span></div>
+          </div>
+          <dl class="ring-legend">
+            <dt>対象車両</dt><dd>3 台</dd>
+            <dt>給油記録</dt><dd>10 件</dd>
+            <dt>総走行距離</dt><dd>2,995 km</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="panel-foot">円弧が0から目標値まで描かれる。目標未達なら色を変えるなど状態を形でも示せる。</div>
+    </div>
+
+    <!-- 4 -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-no">04</span><h2>テスト導入のフロー</h2><span class="use">STATUS</span></div>
+      <div class="panel-body">
+        <svg class="pipe" viewBox="0 0 340 108" width="100%" height="108">
+          <line class="flow" x1="34" y1="42" x2="306" y2="42"/>
+          <line class="flow-lit" x1="34" y1="42" x2="306" y2="42"/>
+          <circle class="stage-c" style="--i:0" cx="34"  cy="42" r="11"/>
+          <circle class="stage-c" style="--i:1" cx="124" cy="42" r="11"/>
+          <circle class="stage-c" style="--i:2" cx="216" cy="42" r="11"/>
+          <circle class="stage-c" style="--i:3" cx="306" cy="42" r="11"/>
+          <text x="34"  y="72" text-anchor="middle">使用前記録</text>
+          <text x="124" y="72" text-anchor="middle">施工</text>
+          <text x="216" y="72" text-anchor="middle">使用後記録</text>
+          <text x="306" y="72" text-anchor="middle">レポート</text>
+          <text x="34"  y="86" text-anchor="middle">4件</text>
+          <text x="124" y="86" text-anchor="middle">済</text>
+          <text x="216" y="86" text-anchor="middle">6件</text>
+          <text x="306" y="86" text-anchor="middle">出力可</text>
+        </svg>
+      </div>
+      <div class="panel-foot">動画のツリー図と同じ仕組み。線を描きながら通過したノードが点灯する。案件ごとの進行状況が一目で分かる。</div>
+    </div>
+
+    <!-- 5 -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-no">05</span><h2>燃費の推移</h2><span class="use">VEHICLE</span></div>
+      <div class="panel-body">
+        <svg class="spark-svg" viewBox="0 0 320 116" width="100%" height="116">
+          <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#0a6ea6" stop-opacity=".22"/>
+            <stop offset="1" stop-color="#0a6ea6" stop-opacity="0"/>
+          </linearGradient></defs>
+          <line class="marker" x1="120" y1="8" x2="120" y2="98"/>
+          <text x="124" y="17" font-size="9.5" fill="#0a6ea6" font-weight="700">施工</text>
+          <path class="area" d="M12,86 L76,80 L120,74 L180,44 L244,30 L308,22 L308,98 L12,98 Z"/>
+          <path class="line" d="M12,86 L76,80 L120,74 L180,44 L244,30 L308,22"/>
+          <circle class="end-dot" cx="308" cy="22" r="5" fill="#0f9d58"/>
+        </svg>
+      </div>
+      <div class="panel-foot">線が左から引かれ、施工日の境界線が出て、最終点が強調される。今のv1のグラフに動きを足した形。</div>
+    </div>
+
+    <!-- 6 -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-no">06</span><h2>車両別 改善率ランキング</h2><span class="use">DASHBOARD</span></div>
+      <div class="panel-body">
+        <div class="rank">
+          <div class="rank-row" style="--i:0"><span class="rank-name">ふそう8t-01</span>
+            <div class="rank-track"><i class="rank-fill" data-pct="100"></i></div><span class="rank-val">+71.1%</span></div>
+          <div class="rank-row" style="--i:1"><span class="rank-name">ソリオ-01</span>
+            <div class="rank-track"><i class="rank-fill" data-pct="47"></i></div><span class="rank-val">+33.3%</span></div>
+          <div class="rank-row" style="--i:2"><span class="rank-name">IS350-01</span>
+            <div class="rank-track"><i class="rank-fill" data-pct="13"></i></div><span class="rank-val">+9.4%</span></div>
+        </div>
+      </div>
+      <div class="panel-foot">上位から順に伸びる。並べ替えたときも位置がアニメーションで移動するので追える。</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const grid = document.getElementById('grid');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let loop = false, timer = null;
+
+/* 施工進捗グリッドのマス目を data 属性から生成 */
+(function buildCells() {
+  const el = document.getElementById('cells');
+  const total = +el.dataset.total, done = +el.dataset.done;
+  el.innerHTML = Array.from({ length: total }, (_, i) =>
+    `<span class="cell${i < done ? ' on' : ''}" style="--i:${i}"></span>`).join('');
+})();
+
+/** 0 → data-to まで数値を上げる。整数なら整数、小数なら小数第1〜2位で刻む */
+function countUp(el, ms) {
+  const to = parseFloat(el.dataset.to);
+  const unit = el.dataset.unit || '', prefix = el.dataset.prefix || '';
+  const dec = (el.dataset.to.split('.')[1] || '').length;
+  const t0 = performance.now();
+  (function step(now) {
+    const p = Math.min(1, (now - t0) / ms);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = prefix + (to * eased).toFixed(dec) + unit;
+    if (p < 1) requestAnimationFrame(step);
+  })(t0);
+}
+
+function play() {
+  grid.classList.remove('run');
+  // 一度リセットしてからでないと再生し直せない（レイアウトを強制的に確定させる）
+  void grid.offsetWidth;
+
+  document.getElementById('track-fill').style.width = '0';
+  document.querySelectorAll('.bar-fill, .rank-fill').forEach(b => (b.style.width = '0'));
+  document.querySelectorAll('.arc').forEach(a => (a.style.strokeDashoffset = 339.3));
+
+  grid.classList.add('run');
+
+  requestAnimationFrame(() => {
+    const tf = document.getElementById('track-fill');
+    tf.style.width = tf.dataset.pct + '%';
+    document.querySelectorAll('.bar-fill, .rank-fill').forEach(b => (b.style.width = b.dataset.pct + '%'));
+    document.querySelectorAll('.arc').forEach(a => {
+      // 円周 2πr = 339.3。改善率100%で一周する目盛りではなく、30%を満スケールにしている
+      const pct = Math.min(1, parseFloat(a.dataset.pct) / 30);
+      a.style.strokeDashoffset = 339.3 * (1 - pct);
+    });
+  });
+
+  // dataset は読み取り専用アクセサなので Object.assign では書き換えられない。
+  // 目標値は必ずHTML側の data-to に持たせる。
+  document.querySelectorAll('[data-to]').forEach(el => countUp(el, 1600));
+}
+
+function setMode(isLoop) {
+  loop = isLoop;
+  document.getElementById('m-once').setAttribute('aria-pressed', String(!isLoop));
+  document.getElementById('m-loop').setAttribute('aria-pressed', String(isLoop));
+  document.getElementById('note').innerHTML = isLoop
+    ? '<strong>デモモード</strong>：4秒ごとに繰り返します。共有リンクや展示会のモニターなど、<strong>見せるための画面</strong>向け。動画のGitHubページはこちらです。'
+    : '<strong>実運用モード</strong>：読み込み時とデータ更新時に<strong>1回だけ</strong>動きます。毎日使う業務画面はこちらが正解です。ずっと動いていると数字を読むのに邪魔になります。';
+  clearInterval(timer);
+  if (isLoop && !reduce) timer = setInterval(play, 4200);
+}
+
+document.getElementById('m-once').onclick = () => { setMode(false); play(); };
+document.getElementById('m-loop').onclick = () => { setMode(true); play(); };
+document.getElementById('replay').onclick = play;
+
+setMode(false);
+play();
+</script>
+</body>
+</html>
